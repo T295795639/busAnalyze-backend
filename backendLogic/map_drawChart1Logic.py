@@ -6,21 +6,24 @@ from temp import *
 from comUsed.gpsXg import *
 
 # 获取位置
-def getPosition(label2stations, cluId):
+def getPosition(label2stations, cluId2):
     '''
     生成位置
     :param: label2stations: cluId: stations
     :return: cluId: position
     '''
+
     dic = defaultdict(dict)
     for cluId, stations in label2stations.items():
-        position = center_geolocation(stations)
-        dic[cluId] = position
+        if cluId == cluId2:
+            position = center_geolocation(stations)
+            dic[cluId] = position
+
     return dic
 
 
-# 获取站点客流
-def getStationFlow(label2stations, timeSpan, cluId):
+# 获取站点客流 5~50
+def getStationFlow(label2stations, timeSpan):
     '''
     站点客流
     :return: {上行: {stationId: flows, stationId: flows, stationId: flows}, 下行: {stationId: flows, stationId: flows, stationId: flows}}
@@ -39,14 +42,18 @@ def getStationFlow(label2stations, timeSpan, cluId):
 # 得到聚类站点中心点
 def getLabel2Point(label2stations, labels):
     dic = {}
+    # print(labels)
+    json_dump(label2stations, 'tempjson.json')
     for label, stations in label2stations.items():
-        if label in labels:
+        if len(stations) != 0:
             dic[label] = center_geolocation(stations)
     return dic
 
 
 # 得到聚类簇 外向和内向客流的站点
-def getLabelDirectStations(links, cluId):
+def getLabelDirectStations(label2stations, links, cluId):
+    print('getLabelDirectStations label2stations', label2stations)
+    print('getLabelDirectStations links', links)
     # 基本逻辑: 对每个link:{source: 1, target: 2}  簇1<->簇2 即stations1<->stations2
     # 每条线路的上行\下行站点序列
     road2stations = json_load(r'D:\pycharmProject\busAnalyze-backend\data\road2stations.json')
@@ -62,11 +69,11 @@ def getLabelDirectStations(links, cluId):
         links2.append(link2)
     for link in links2:
         label1, label2 = link[0], link[1]
-        if str(label1) != cluId and str(label2) != cluId:
-            continue
+        # if str(label1) != cluId and str(label2) != cluId:
+        #     continue
         aList, bList = [], []
         # 每个连接关系 生成stations1和stations2
-        stations1, stations2 = label2stations[link[0]], label2stations[link[1]]
+        stations1, stations2 = label2stations[int(link[0])], label2stations[int(link[1])]
         stations1, stations2 = [x[2] for x in stations1], [x[2] for x in stations2]
         stationSet1, stationSet2 = set(stations1), set(stations2)
         for road, stations in road2stations.items():
@@ -88,9 +95,9 @@ def getLabelDirectStations(links, cluId):
                             b = station
                             bList.append([b, direct])
         # 聚类外侧客流的站点 内测客流的站点
-        dic_label_direct_stations[label1]['outStation'] = aList
-        dic_label_direct_stations[label2]['inStation'] = bList
-
+        dic_label_direct_stations[int(label1)]['outStation'] = aList
+        dic_label_direct_stations[int(label2)]['inStation'] = bList
+    print(dic_label_direct_stations)
     json_dump(dic_label_direct_stations, r'D:\pycharmProject\busAnalyze-backend\data\dic_lable_direct_stations.json')
     return dic_label_direct_stations
 
@@ -112,11 +119,15 @@ def getFlow(label2stations, stationFlow, links, cluId):
     :return: cluId: inflow[[angle, value]] outflow[[angle, value]]
     '''
     # 1.计算外围站点
-    dic_label_direct_stations = getLabelDirectStations(links, cluId)
+    # dic_label_direct_stations = getLabelDirectStations(label2stations=json_load(r'D:\pycharmProject\busAnalyze-backend\tempData\label2stations2.json'), links=json_load(r'D:\pycharmProject\busAnalyze-backend\tempData\links.json'), cluId=12)
+    dic_label_direct_stations = getLabelDirectStations(label2stations, links, cluId)
+
+    # print("dic_label_direct_stations", dic_label_direct_stations)
     labels = list(dic_label_direct_stations.keys())
     # 计算角度 获得客流 [stationId]['out'][[angel, flow], [angel, flow]]
     # 2.获得label2Point
     label2Point = getLabel2Point(label2stations, labels)
+    # print("label2Point", label2Point)
     dic_staId_lnglat = json_load(r'D:\pycharmProject\busAnalyze-backend\data\dic_staId_lnglat.json')
     staIdL = list(dic_staId_lnglat.keys())
     dic_label_direct_flow = defaultdict(dict)
@@ -126,15 +137,18 @@ def getFlow(label2stations, stationFlow, links, cluId):
         for direct, stations in dic_direct.items():
             # 每个聚类簇(label)不同流向下:  中心位置point+station 生成一个 [angle, flow]
             # 求得 label_upOrIn => [[angel, flow]]
-            dic_label_direct_flow[label][direct] = []
+            dic_label_direct_flow[label]['in'] = []
+            dic_label_direct_flow[label]['out'] = []
             for station in stations:
                 if str(station[0]) not in staIdL:
                     continue
                 angel = getAngel(point, dic_staId_lnglat[str(station[0])])
                 angel = (360+angel) if angel < 0 else angel
                 flow = stationFlow[station[0]][station[1]]
-                dic_label_direct_flow[label][direct].append([flow, angel])
-
+                if direct == 'outStation':
+                    dic_label_direct_flow[label]['out'].append([flow, angel])
+                else:
+                    dic_label_direct_flow[label]['in'].append([flow, angel])
     return dic_label_direct_flow
 
 
@@ -152,13 +166,8 @@ def getIndex(label2stations, timeSpan):
 
 if __name__ == '__main__':
 
-    label2stations = json_load(r'D:\pycharmProject\busAnalyze-backend\data\lable2stations.json')
-    timeSpan = ['xxx-xxx-xxx', 'xxx-xxx-xxx']
-    stationFlow = getStationFlow(timeSpan)
-    # print('模拟站点客流', getStationFlow(label2stations, timeSpan))
-    # links = ''
-    flows = getFlow(label2stations, stationFlow, json_load(r'D:\pycharmProject\busAnalyze-backend\testData\选择区域聚类\2.H_antvData.json')["edges"])
-    json_dump(flows, 'flows.json')
+    ans = getLabelDirectStations(label2stations=json_load(r'D:\pycharmProject\busAnalyze-backend\tempData\label2stations2.json'), links=json_load(r'D:\pycharmProject\busAnalyze-backend\tempData\links.json'), cluId=12)
+    print(ans)
     pass
 
 

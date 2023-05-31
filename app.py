@@ -32,17 +32,19 @@ def map_drawChart1(cluId):
     # 有一个簇 生成 流入该簇的客流和流出该簇的客流 入和出
     # 流入:簇外的站点-->簇内的站点  流出:簇内的站点-->簇外的站点
     global ret
+    # print(ret['label2stations'])
     label2stations = ret['label2stations']
+    # print(cluId)
     # print(label2stations)
-    cluId = str(cluId)
+    cluId = int(cluId)
 
     chart1_data = {}
 
     # 通过label2stations生成position
     dic_position = chart1_data['position'] = map_drawChart1Logic.getPosition(label2stations, cluId)
 
-    # 站点客流
-    stationFlow = map_drawChart1Logic.getStationFlow(label2stations, [ret['start_time'], ret['end_time']], cluId)
+    # 站点客流 模拟
+    stationFlow = map_drawChart1Logic.getStationFlow(label2stations, [ret['start_time'], ret['end_time']])
 
     # 通过label2stations生成客流信息
     dic_flow = chart1_data['flow'] = map_drawChart1Logic.getFlow(label2stations, stationFlow, ret['antvData']['edges'], cluId)
@@ -54,7 +56,8 @@ def map_drawChart1(cluId):
     # chart1_data = ''
 
     # print(dic_position)
-
+    # print(chart1_data)
+    json_dump(chart1_data['flow'], r'D:\pycharmProject\busAnalyze-backend\tempData\flow.json')
     return jsonify(chart1_data)
 
 
@@ -106,7 +109,6 @@ def selectRegion():
         # label2stations-->links
         json_dump(antvData, r'D:\pycharmProject\busAnalyze-backend\testData\选择区域聚类\2.H_antvData.json')
         # 触发chart1数据的改变
-        map_drawChart1()
         return jsonify(antvData)
 
 # 获取站点位置
@@ -119,6 +121,23 @@ def getStationPos():
         return pos
     else:
         return '1'
+
+# 获取线路绘制数据
+@app.route('/getRouteData/<routeName>')
+def getRouteData(routeName):
+    '''
+    获取线路数据
+    :param routeName: 线路名
+    :return: 绘制数据
+    '''
+    # 原始数据 {'102_down': [point1, point2, point3]}
+    dic_route = {}
+
+
+
+    route_geoJosn = {"返回": 'ok'}
+    return jsonify(route_geoJosn)
+
 
 if __name__ == '__main__':
     app.run()
