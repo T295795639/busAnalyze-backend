@@ -517,7 +517,7 @@ def hieCluster(X, n_clusters_, plot):
         pass
     return lables
 
-## 通过聚类得到站点聚类数据
+# 通过聚类得到站点聚类数据
 def getStationClu(stations=json_load('D:\pycharmProject\logic\dataSet\staIdL.json'), K=110):
     '''
     得到站点的聚类结果 [新的站点, 站点标签]
@@ -657,7 +657,7 @@ if __name__ == '__main__':
     # print(cluAns)
     # stations
     # 删去站点的聚类 站点+删除站点+聚类个数
-    ans = getStationClu_sub(stations=json_load(r'D:\pycharmProject\logic\dataSet\staIdL.json'), sub_stations=json_load(r'D:\pycharmProject\busAnalyze-backend\testData\staL.json'), K=110)
+    ans = getStationClu_sub(stations=json_load(r'D:\pycharmProject\logic\dataSet\staIdL.json'), sub_stations=[], K=110)
     pass
 
 
